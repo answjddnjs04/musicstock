@@ -1,36 +1,52 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { calculateTradeFee } from '../lib/fee'
+import { getAvailableShares } from '../lib/trading'
 
-export function TradingModal({ song, mode, onClose }) {
-  const { balance, feeRate, portfolio, buySong, sellSong } = useApp()
+export function TradingModal({ song: initialSong, mode, onClose }) {
+  const { songs, balance, feeRate, portfolio, buySong, sellSong } = useApp()
   const [quantity, setQuantity] = useState(1)
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const song = songs.find((s) => s.song_id === initialSong.song_id) ?? initialSong
 
   const holding = portfolio.find((p) => p.song_id === song.song_id)
-  const maxQuantity = mode === 'sell' ? (holding?.quantity ?? 0) : null
+  const availableShares = getAvailableShares(song)
+  const maxQuantity = mode === 'sell' ? (holding?.quantity ?? 0) : availableShares
 
   const amount = song.current_price * quantity
   const fee = calculateTradeFee(amount, feeRate)
   const total = mode === 'buy' ? amount + fee : amount - fee
 
+  const isSoldOut = mode === 'buy' && availableShares <= 0
   const isValid =
-    quantity > 0 && (mode === 'buy' ? total <= balance : quantity <= maxQuantity)
+    quantity > 0 &&
+    !isSoldOut &&
+    quantity <= maxQuantity &&
+    (mode === 'buy' ? total <= balance : true)
 
   const adjustQuantity = (delta) => {
     setQuantity((q) => {
       const next = q + delta
       if (next < 1) return 1
-      if (mode === 'sell' && next > maxQuantity) return maxQuantity
+      if (next > maxQuantity) return maxQuantity
       return next
     })
   }
 
-  const handleConfirm = () => {
-    if (!isValid) return
-    if (mode === 'buy') {
-      buySong(song.song_id, quantity)
-    } else {
-      sellSong(song.song_id, quantity)
+  const handleConfirm = async () => {
+    if (!isValid || isSubmitting) return
+    setIsSubmitting(true)
+    setError('')
+
+    const action = mode === 'buy' ? buySong : sellSong
+    const result = await action(song.song_id, quantity)
+
+    setIsSubmitting(false)
+    if (!result?.ok) {
+      setError(result?.error ?? '거래에 실패했어요.')
+      return
     }
     onClose()
   }
@@ -50,12 +66,24 @@ export function TradingModal({ song, mode, onClose }) {
           </div>
         </div>
 
-        <p className="mb-2 text-xs text-muted">
-          {mode === 'buy' ? '보유 잔고' : '보유 수량'}:{' '}
-          <span className="text-white">
-            {mode === 'buy' ? `${balance.toLocaleString()}콩` : `${maxQuantity}주`}
+        <div className="mb-2 flex items-center justify-between text-xs text-muted">
+          <span>
+            {mode === 'buy' ? '보유 잔고' : '보유 수량'}:{' '}
+            <span className="text-white">
+              {mode === 'buy'
+                ? `${balance.toLocaleString()}콩`
+                : `${maxQuantity}주`}
+            </span>
           </span>
-        </p>
+          {mode === 'buy' && (
+            <span>
+              구매 가능:{' '}
+              <span className={isSoldOut ? 'text-fall' : 'text-white'}>
+                {isSoldOut ? '품절' : `${availableShares}주`}
+              </span>
+            </span>
+          )}
+        </div>
 
         <div className="mb-4 flex items-center justify-center gap-4">
           <button
@@ -92,6 +120,8 @@ export function TradingModal({ song, mode, onClose }) {
           </div>
         </div>
 
+        {error && <p className="mb-2 text-xs text-fall">{error}</p>}
+
         <div className="flex gap-2">
           <button
             type="button"
@@ -103,12 +133,16 @@ export function TradingModal({ song, mode, onClose }) {
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={!isValid}
+            disabled={!isValid || isSubmitting}
             className={`flex-1 rounded-pill py-2 text-sm font-semibold disabled:opacity-40 ${
               mode === 'buy' ? 'bg-rise text-background' : 'bg-fall text-background'
             }`}
           >
-            {mode === 'buy' ? '매수하기' : '매도하기'}
+            {isSubmitting
+              ? '처리 중...'
+              : mode === 'buy'
+                ? '매수하기'
+                : '매도하기'}
           </button>
         </div>
       </div>

@@ -7,6 +7,8 @@ const isSupabaseEnabled = !!supabase
 const ADMIN_EMAIL = 'infinitefoever@naver.com'
 
 function songToRow(song) {
+  // shares_sold is intentionally omitted: it's only ever mutated server-side
+  // via the buy_shares/sell_shares RPCs, never overwritten by a client upsert.
   return {
     song_id: song.song_id,
     title: song.title,
@@ -30,6 +32,7 @@ function rowToSong(row) {
     daily_views_growth: row.daily_views_growth,
     price_change_rate: row.price_change_rate,
     total_shares: row.total_shares,
+    shares_sold: row.shares_sold,
     dividend_yield_ratio: row.dividend_yield_ratio,
   }
 }
@@ -164,22 +167,66 @@ export function AppProvider({ children }) {
     loadProfile()
   }, [state.session])
 
-  const buySong = (songId, quantity) => {
+  const buySong = async (songId, quantity) => {
     const result = applyBuySong(state, songId, quantity)
-    if (!result) return
-    dispatch({ type: 'MERGE_STATE', payload: result.nextState })
+    if (!result) return { ok: false, error: '구매 조건을 확인해주세요.' }
+
+    if (isSupabaseEnabled && state.session) {
+      const { error: rpcError } = await supabase.rpc('buy_shares', {
+        p_song_id: songId,
+        p_quantity: quantity,
+      })
+      if (rpcError) return { ok: false, error: '재고가 부족해요.' }
+    }
+
+    dispatch({
+      type: 'MERGE_STATE',
+      payload: {
+        ...result.nextState,
+        songs: state.songs.map((s) =>
+          s.song_id === songId
+            ? { ...s, shares_sold: (s.shares_sold ?? 0) + quantity }
+            : s
+        ),
+      },
+    })
+
     if (isSupabaseEnabled && state.session) {
       persistTrade(state.session.user.id, { ...state, ...result.nextState }, result.trade)
     }
+
+    return { ok: true }
   }
 
-  const sellSong = (songId, quantity) => {
+  const sellSong = async (songId, quantity) => {
     const result = applySellSong(state, songId, quantity)
-    if (!result) return
-    dispatch({ type: 'MERGE_STATE', payload: result.nextState })
+    if (!result) return { ok: false, error: '판매 조건을 확인해주세요.' }
+
+    if (isSupabaseEnabled && state.session) {
+      const { error: rpcError } = await supabase.rpc('sell_shares', {
+        p_song_id: songId,
+        p_quantity: quantity,
+      })
+      if (rpcError) return { ok: false, error: '판매에 실패했어요.' }
+    }
+
+    dispatch({
+      type: 'MERGE_STATE',
+      payload: {
+        ...result.nextState,
+        songs: state.songs.map((s) =>
+          s.song_id === songId
+            ? { ...s, shares_sold: Math.max(0, (s.shares_sold ?? 0) - quantity) }
+            : s
+        ),
+      },
+    })
+
     if (isSupabaseEnabled && state.session) {
       persistTrade(state.session.user.id, { ...state, ...result.nextState }, result.trade)
     }
+
+    return { ok: true }
   }
 
   const settleDaily = () => {

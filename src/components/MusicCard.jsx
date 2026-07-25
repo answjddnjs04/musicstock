@@ -1,3 +1,5 @@
+import { getAvailableShares } from '../lib/trading'
+
 function ChangeBadge({ rate, className = '' }) {
   const isRise = rate >= 0
   return (
@@ -10,6 +12,8 @@ function ChangeBadge({ rate, className = '' }) {
 }
 
 export function MusicCard({ song, variant = 'card', onBuy, onSell }) {
+  const isSoldOut = getAvailableShares(song) <= 0
+
   if (variant === 'list') {
     return (
       <div className="flex items-center gap-3 rounded-card bg-surface p-3">
@@ -32,9 +36,10 @@ export function MusicCard({ song, variant = 'card', onBuy, onSell }) {
           <button
             type="button"
             onClick={() => onBuy?.(song)}
-            className="rounded-pill bg-rise/10 px-3 py-1 text-xs font-semibold text-rise"
+            disabled={isSoldOut}
+            className="rounded-pill bg-rise/10 px-3 py-1 text-xs font-semibold text-rise disabled:opacity-40"
           >
-            매수
+            {isSoldOut ? '품절' : '매수'}
           </button>
           <button
             type="button"
@@ -69,9 +74,10 @@ export function MusicCard({ song, variant = 'card', onBuy, onSell }) {
         <button
           type="button"
           onClick={() => onBuy?.(song)}
-          className="flex-1 rounded-pill bg-rise/10 py-1.5 text-xs font-semibold text-rise"
+          disabled={isSoldOut}
+          className="flex-1 rounded-pill bg-rise/10 py-1.5 text-xs font-semibold text-rise disabled:opacity-40"
         >
-          매수
+          {isSoldOut ? '품절' : '매수'}
         </button>
         <button
           type="button"

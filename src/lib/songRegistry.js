@@ -21,6 +21,7 @@ export function buildSongFromYoutubeTrack(track) {
     current_price: currentPrice,
     daily_views_growth: track.view_count,
     total_shares: DEFAULT_TOTAL_SHARES,
+    shares_sold: 0,
     // 실제 주가 등락/배당 이력이 아직 없어서 초기값은 랜덤으로 채움
     price_change_rate: randomInRange(-15, 15),
     dividend_yield_ratio: randomInRange(1, 8),

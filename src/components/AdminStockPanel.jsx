@@ -60,6 +60,9 @@ export function AdminStockPanel() {
               <p className="truncate text-xs text-muted">
                 {song.artist} · {song.current_price.toLocaleString()}콩
               </p>
+              <p className="truncate text-[11px] text-muted">
+                판매됨 {song.shares_sold ?? 0} / {song.total_shares ?? 1}
+              </p>
             </div>
             <input
               type="number"

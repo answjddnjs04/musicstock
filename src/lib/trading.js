@@ -1,9 +1,14 @@
 import { calculateTradeFee, calculateFeeRate, calculateInflationRate } from './fee'
 import { calculatePortfolioDividend, getTopDividendContributor } from './dividend'
 
+export function getAvailableShares(song) {
+  return (song.total_shares ?? 1) - (song.shares_sold ?? 0)
+}
+
 export function applyBuySong(state, songId, quantity) {
   const song = state.songs.find((s) => s.song_id === songId)
   if (!song || quantity <= 0) return null
+  if (quantity > getAvailableShares(song)) return null
 
   const amount = song.current_price * quantity
   const fee = calculateTradeFee(amount, state.feeRate)
