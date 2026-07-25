@@ -1,9 +1,10 @@
 // Cloudflare Pages Function: POST /api/song-views
-// body: { songs: [{ song_id, title, artist }] }
+// body: { songs: [{ song_id, title, artist, video_id? }] }
 // 이미 마켓에 등록된 곡들의 "지금 이 순간" YouTube 조회수를 다시 조회한다.
-// 주가 관리 화면에서 관리자가 접속할 때마다 호출되고, 그 결과를 프론트가
-// song_view_history 테이블에 오늘 날짜로 저장(기록)한다.
-import { findYoutubeViewCount } from '../_lib/youtube.js'
+// video_id가 있으면 정확한 ID 조회(항상 같은 영상), 없으면 텍스트 검색으로 1회
+// 매칭하고 그 videoId를 응답에 같이 실어보낸다 — 프론트가 이걸 받아서
+// updateSong으로 저장해두면 다음부터는 이 곡도 ID 조회로 고정된다.
+import { findYoutubeVideoMatch, getViewCountById } from '../_lib/youtube.js'
 
 export async function onRequestPost(context) {
   const youtubeApiKey = context.env.YOUTUBE_API_KEY
@@ -28,10 +29,19 @@ export async function onRequestPost(context) {
   const songs = Array.isArray(body.songs) ? body.songs : []
 
   const views = await Promise.all(
-    songs.map(async (song) => ({
-      song_id: song.song_id,
-      view_count: await findYoutubeViewCount(youtubeApiKey, song.title, song.artist),
-    }))
+    songs.map(async (song) => {
+      if (song.video_id) {
+        const view_count = await getViewCountById(youtubeApiKey, song.video_id)
+        return { song_id: song.song_id, view_count, video_id: song.video_id }
+      }
+
+      const { videoId, viewCount } = await findYoutubeVideoMatch(
+        youtubeApiKey,
+        song.title,
+        song.artist
+      )
+      return { song_id: song.song_id, view_count: viewCount, video_id: videoId }
+    })
   )
 
   return new Response(JSON.stringify({ views }), {

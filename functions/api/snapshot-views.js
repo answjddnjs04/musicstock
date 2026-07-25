@@ -4,7 +4,7 @@
 // service role 키로 Supabase RLS를 우회해서 쓰기 때문에, 아무나 못 부르게
 // CRON_SECRET을 대조하는 인증을 반드시 거친다.
 import { createClient } from '@supabase/supabase-js'
-import { findYoutubeViewCount } from '../_lib/youtube.js'
+import { getViewCountById, findYoutubeVideoMatch } from '../_lib/youtube.js'
 
 function todayInSeoul() {
   // KST는 UTC+9 고정(서머타임 없음)이라 그냥 9시간 더해서 날짜만 뽑으면 된다.
@@ -35,7 +35,7 @@ export async function onRequestPost(context) {
 
   const { data: songs, error: fetchError } = await supabase
     .from('songs')
-    .select('song_id, title, artist')
+    .select('song_id, title, artist, video_id')
 
   if (fetchError) {
     return new Response(JSON.stringify({ error: fetchError.message }), {
@@ -45,13 +45,36 @@ export async function onRequestPost(context) {
   }
 
   const recordedDate = todayInSeoul()
+  const newlyResolvedIds = []
 
   const rows = await Promise.all(
-    (songs ?? []).map(async (song) => ({
-      song_id: song.song_id,
-      view_count: await findYoutubeViewCount(youtubeApiKey, song.title, song.artist),
-      recorded_date: recordedDate,
-    }))
+    (songs ?? []).map(async (song) => {
+      if (song.video_id) {
+        const view_count = await getViewCountById(youtubeApiKey, song.video_id)
+        return { song_id: song.song_id, view_count, recorded_date: recordedDate }
+      }
+
+      const { videoId, viewCount } = await findYoutubeVideoMatch(
+        youtubeApiKey,
+        song.title,
+        song.artist
+      )
+      if (videoId) {
+        newlyResolvedIds.push({ song_id: song.song_id, video_id: videoId })
+      }
+      return {
+        song_id: song.song_id,
+        view_count: viewCount,
+        recorded_date: recordedDate,
+      }
+    })
+  )
+
+  // 새로 매칭된 video_id는 다음 실행부터 검색 없이 고정 조회되도록 저장해둔다.
+  await Promise.all(
+    newlyResolvedIds.map(({ song_id, video_id }) =>
+      supabase.from('songs').update({ video_id }).eq('song_id', song_id)
+    )
   )
 
   if (rows.length > 0) {

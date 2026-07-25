@@ -5,7 +5,7 @@
 // 존재하고 브라우저로는 절대 내려가지 않는다 — 프론트는 이 엔드포인트만 호출.
 // Spotify 쪽이 실패하면(예: 앱 소유 계정 Premium 미구독으로 403) 조용히 죽지 않고
 // YouTube 단독 검색으로 자동 폴백해서 기능이 계속 동작하게 한다.
-import { findYoutubeViewCount, readUpstreamError } from '../_lib/youtube.js'
+import { findYoutubeVideoMatch, readUpstreamError } from '../_lib/youtube.js'
 
 const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token'
 const SPOTIFY_API_BASE = 'https://api.spotify.com/v1'
@@ -69,13 +69,18 @@ async function resolveViaSpotify(spotifyClientId, spotifyClientSecret, youtubeAp
   return Promise.all(
     tracks.map(async (track) => {
       const artist = track.artists.map((a) => a.name).join(', ')
-      const viewCount = await findYoutubeViewCount(youtubeApiKey, track.name, artist)
+      const { videoId, viewCount } = await findYoutubeVideoMatch(
+        youtubeApiKey,
+        track.name,
+        artist
+      )
 
       return {
         song_id: `sp_${track.id}`,
         title: track.name,
         artist,
         album_cover: track.album.images?.[0]?.url ?? null,
+        video_id: videoId,
         view_count: viewCount,
       }
     })
@@ -117,6 +122,7 @@ async function resolveViaYoutubeOnly(youtubeApiKey, artistName) {
       video.snippet.thumbnails?.medium?.url ??
       video.snippet.thumbnails?.default?.url ??
       null,
+    video_id: video.id.videoId,
     view_count: viewCountById.get(video.id.videoId) ?? 0,
   }))
 }

@@ -87,6 +87,7 @@ create table public.songs (
   total_shares bigint not null default 1,
   shares_sold bigint not null default 0,
   dividend_yield_ratio numeric not null default 0,
+  video_id text,
   created_at timestamptz not null default now()
 );
 

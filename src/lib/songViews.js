@@ -8,6 +8,7 @@ export async function fetchCurrentViewCounts(songs) {
         song_id: s.song_id,
         title: s.title,
         artist: s.artist,
+        video_id: s.video_id ?? null,
       })),
     }),
   })

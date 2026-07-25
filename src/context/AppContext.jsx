@@ -24,6 +24,7 @@ function songToRow(song) {
     price_change_rate: song.price_change_rate,
     total_shares: song.total_shares,
     dividend_yield_ratio: song.dividend_yield_ratio,
+    video_id: song.video_id ?? null,
   }
 }
 
@@ -39,6 +40,7 @@ function rowToSong(row) {
     total_shares: row.total_shares,
     shares_sold: row.shares_sold,
     dividend_yield_ratio: row.dividend_yield_ratio,
+    video_id: row.video_id,
   }
 }
 

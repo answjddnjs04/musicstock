@@ -21,6 +21,7 @@ export function buildSongFromYoutubeTrack(track) {
     title: track.title,
     artist: track.artist,
     album_cover: track.album_cover,
+    video_id: track.video_id ?? null,
     current_price: currentPrice,
     daily_views_growth: track.view_count,
     total_shares: DEFAULT_TOTAL_SHARES,

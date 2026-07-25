@@ -32,7 +32,15 @@ export function AdminStockPanel() {
       setCurrentViews(nextViews)
 
       await Promise.all(
-        views.map((v) => recordViewSnapshot(v.song_id, v.view_count))
+        views.map(async (v) => {
+          await recordViewSnapshot(v.song_id, v.view_count)
+          // video_id가 새로 해결된 곡은 저장해둬서 다음부터는 검색 없이
+          // 정확한 ID로만 조회되게 고정한다(조회수가 하루아침에 널뛰는 걸 방지).
+          const song = songs.find((s) => s.song_id === v.song_id)
+          if (v.video_id && song && !song.video_id) {
+            await updateSong(v.song_id, { video_id: v.video_id })
+          }
+        })
       )
     } catch (err) {
       setViewsError(err.message)
