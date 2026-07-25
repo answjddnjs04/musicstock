@@ -285,6 +285,30 @@ export function AppProvider({ children }) {
     }
   }
 
+  // 오늘 날짜로 조회수 스냅샷 1건을 남긴다(같은 날 다시 부르면 upsert로 덮어씀).
+  const recordViewSnapshot = async (songId, viewCount) => {
+    if (!isAdmin || !isSupabaseEnabled) return
+    await supabase.from('song_view_history').upsert(
+      {
+        song_id: songId,
+        view_count: viewCount,
+        recorded_date: new Date().toISOString().slice(0, 10),
+      },
+      { onConflict: 'song_id,recorded_date' }
+    )
+  }
+
+  // 곡 하나의 날짜별 조회수 기록을 오래된 순으로 가져온다.
+  const fetchViewHistory = async (songId) => {
+    if (!isSupabaseEnabled) return []
+    const { data } = await supabase
+      .from('song_view_history')
+      .select('*')
+      .eq('song_id', songId)
+      .order('recorded_date', { ascending: true })
+    return data ?? []
+  }
+
   const signUp = (email, password) => supabase.auth.signUp({ email, password })
   const signIn = (email, password) =>
     supabase.auth.signInWithPassword({ email, password })
@@ -301,6 +325,8 @@ export function AppProvider({ children }) {
         settleDaily,
         registerSongs,
         updateSong,
+        recordViewSnapshot,
+        fetchViewHistory,
         signUp,
         signIn,
         signOut,

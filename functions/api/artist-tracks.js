@@ -5,15 +5,12 @@
 // 존재하고 브라우저로는 절대 내려가지 않는다 — 프론트는 이 엔드포인트만 호출.
 // Spotify 쪽이 실패하면(예: 앱 소유 계정 Premium 미구독으로 403) 조용히 죽지 않고
 // YouTube 단독 검색으로 자동 폴백해서 기능이 계속 동작하게 한다.
+import { findYoutubeViewCount, readUpstreamError } from '../_lib/youtube.js'
+
 const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token'
 const SPOTIFY_API_BASE = 'https://api.spotify.com/v1'
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3'
 const RESULT_LIMIT = 5
-
-async function readUpstreamError(res) {
-  const text = await res.text().catch(() => '')
-  return `HTTP ${res.status}${text ? `: ${text}` : ''}`
-}
 
 async function getSpotifyToken(clientId, clientSecret) {
   const credentials = btoa(`${clientId}:${clientSecret}`)
@@ -65,40 +62,6 @@ async function searchSpotifyTracks(token, artistName) {
   return data.tracks?.items ?? []
 }
 
-function pickBestVideo(items) {
-  const isOfficialOrTopic = (item) => {
-    const channelTitle = item.snippet.channelTitle ?? ''
-    const title = item.snippet.title ?? ''
-    return (
-      channelTitle.toLowerCase().endsWith('- topic') ||
-      /official\s*audio/i.test(title)
-    )
-  }
-  return items.find(isOfficialOrTopic) ?? items[0] ?? null
-}
-
-async function searchYoutubeVideo(apiKey, query) {
-  const url = `${YOUTUBE_API_BASE}/search?part=snippet&type=video&videoCategoryId=10&maxResults=5&q=${encodeURIComponent(query)}&key=${apiKey}`
-  const res = await fetch(url)
-  if (!res.ok) {
-    console.error('[artist-tracks] YouTube search error:', await readUpstreamError(res))
-    return null
-  }
-  const data = await res.json()
-  return pickBestVideo(data.items ?? [])
-}
-
-async function fetchYoutubeViewCount(apiKey, videoId) {
-  const url = `${YOUTUBE_API_BASE}/videos?part=statistics&id=${videoId}&key=${apiKey}`
-  const res = await fetch(url)
-  if (!res.ok) {
-    console.error('[artist-tracks] YouTube video stats error:', await readUpstreamError(res))
-    return 0
-  }
-  const data = await res.json()
-  return Number(data.items?.[0]?.statistics?.viewCount ?? 0)
-}
-
 async function resolveViaSpotify(spotifyClientId, spotifyClientSecret, youtubeApiKey, artistName) {
   const token = await getSpotifyToken(spotifyClientId, spotifyClientSecret)
   const tracks = await searchSpotifyTracks(token, artistName)
@@ -106,13 +69,7 @@ async function resolveViaSpotify(spotifyClientId, spotifyClientSecret, youtubeAp
   return Promise.all(
     tracks.map(async (track) => {
       const artist = track.artists.map((a) => a.name).join(', ')
-      const video = await searchYoutubeVideo(
-        youtubeApiKey,
-        `${artist} ${track.name} official audio`
-      )
-      const viewCount = video?.id?.videoId
-        ? await fetchYoutubeViewCount(youtubeApiKey, video.id.videoId)
-        : 0
+      const viewCount = await findYoutubeViewCount(youtubeApiKey, track.name, artist)
 
       return {
         song_id: `sp_${track.id}`,

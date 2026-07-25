@@ -150,3 +150,26 @@ $$ language plpgsql security definer set search_path = public;
 
 grant execute on function public.buy_shares(text, integer) to authenticated;
 grant execute on function public.sell_shares(text, integer) to authenticated;
+
+-- Daily YouTube view-count snapshots, shown as history in "주가 관리".
+create table public.song_view_history (
+  id uuid primary key default gen_random_uuid(),
+  song_id text not null references public.songs (song_id) on delete cascade,
+  view_count bigint not null,
+  recorded_date date not null default current_date,
+  unique (song_id, recorded_date)
+);
+
+alter table public.song_view_history enable row level security;
+
+create policy "Only the admin account can view history"
+  on public.song_view_history for select
+  using (auth.jwt() ->> 'email' = 'infinitefoever@naver.com');
+
+create policy "Only the admin account can insert history"
+  on public.song_view_history for insert
+  with check (auth.jwt() ->> 'email' = 'infinitefoever@naver.com');
+
+create policy "Only the admin account can update history"
+  on public.song_view_history for update
+  using (auth.jwt() ->> 'email' = 'infinitefoever@naver.com');
