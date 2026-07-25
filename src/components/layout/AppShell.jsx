@@ -12,7 +12,7 @@ export function AppShell({ tickerBar, screens }) {
     <div className="flex min-h-screen flex-col bg-background text-white">
       <div className="sticky top-0 z-10">{tickerBar}</div>
 
-      <main className="flex-1 overflow-y-auto pb-20">
+      <main className="mx-auto w-full max-w-[1600px] flex-1 overflow-y-auto pb-20">
         {screens[activeTab]}
       </main>
 

@@ -116,7 +116,7 @@ export function HomeScreen({ onTrade }) {
           준비 중인 화면이에요.
         </div>
       ) : (
-        <div className="flex gap-2 overflow-x-auto px-4 pb-4">
+        <div className="grid w-full grid-cols-1 gap-6 px-4 pb-4 md:grid-cols-3">
           {topRising && (
             <RankColumn
               label="주가 급상승"
