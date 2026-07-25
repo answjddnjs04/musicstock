@@ -1,8 +1,10 @@
-import { createContext, useContext, useReducer } from 'react'
+import { createContext, useContext, useEffect, useReducer } from 'react'
 import { mockSongs } from '../data/mockSongs'
 import { mockUser } from '../data/mockUser'
-import { calculateFeeRate, calculateInflationRate, calculateTradeFee } from '../lib/fee'
-import { calculatePortfolioDividend, getTopDividendContributor } from '../lib/dividend'
+import { applyBuySong, applySellSong, applySettleDaily } from '../lib/trading'
+import { supabase } from '../lib/supabaseClient'
+
+const isSupabaseEnabled = !!supabase
 
 const initialState = {
   songs: mockSongs,
@@ -10,86 +12,49 @@ const initialState = {
   balance: mockUser.balance,
   feeRate: mockUser.fee_rate,
   lastSettlement: mockUser.last_settlement,
+  session: null,
+  isAuthLoading: isSupabaseEnabled,
+  isProfileLoading: false,
 }
 
 function appReducer(state, action) {
-  switch (action.type) {
-    case 'BUY_SONG': {
-      const { songId, quantity } = action.payload
-      const song = state.songs.find((s) => s.song_id === songId)
-      if (!song || quantity <= 0) return state
-
-      const cost = song.current_price * quantity
-      const fee = calculateTradeFee(cost, state.feeRate)
-      const totalCost = cost + fee
-      if (totalCost > state.balance) return state
-
-      const existing = state.portfolio.find((p) => p.song_id === songId)
-      let portfolio
-      if (existing) {
-        const newQuantity = existing.quantity + quantity
-        const newAvgPrice = Math.round(
-          (existing.avg_price * existing.quantity + cost) / newQuantity
-        )
-        portfolio = state.portfolio.map((p) =>
-          p.song_id === songId
-            ? { ...p, quantity: newQuantity, avg_price: newAvgPrice }
-            : p
-        )
-      } else {
-        portfolio = [
-          ...state.portfolio,
-          { song_id: songId, quantity, avg_price: song.current_price },
-        ]
-      }
-
-      return { ...state, balance: state.balance - totalCost, portfolio }
-    }
-
-    case 'SELL_SONG': {
-      const { songId, quantity } = action.payload
-      const song = state.songs.find((s) => s.song_id === songId)
-      const holding = state.portfolio.find((p) => p.song_id === songId)
-      if (!song || !holding || quantity <= 0 || quantity > holding.quantity) {
-        return state
-      }
-
-      const proceeds = song.current_price * quantity
-      const fee = calculateTradeFee(proceeds, state.feeRate)
-      const netProceeds = proceeds - fee
-      const remaining = holding.quantity - quantity
-
-      const portfolio =
-        remaining === 0
-          ? state.portfolio.filter((p) => p.song_id !== songId)
-          : state.portfolio.map((p) =>
-              p.song_id === songId ? { ...p, quantity: remaining } : p
-            )
-
-      return { ...state, balance: state.balance + netProceeds, portfolio }
-    }
-
-    case 'SETTLE_DAILY': {
-      const totalDividend = calculatePortfolioDividend(state.songs, state.portfolio)
-      const topSong = getTopDividendContributor(state.songs, state.portfolio)
-      const inflationRate = calculateInflationRate(totalDividend)
-      const nextFeeRate = calculateFeeRate(inflationRate)
-
-      return {
-        ...state,
-        balance: state.balance + totalDividend,
-        feeRate: nextFeeRate,
-        lastSettlement: {
-          total_dividend: totalDividend,
-          top_song_id: topSong?.song_id ?? null,
-          fee_rate_today: nextFeeRate,
-        },
-      }
-    }
-
-    default:
-      return state
+  if (action.type === 'MERGE_STATE') {
+    return { ...state, ...action.payload }
   }
+  return state
+}
+
+async function persistTrade(userId, nextState, trade) {
+  const holding = nextState.portfolio.find((p) => p.song_id === trade.songId)
+
+  await Promise.all([
+    supabase.from('profiles').update({ balance: nextState.balance }).eq('id', userId),
+    holding
+      ? supabase
+          .from('portfolio')
+          .upsert(
+            {
+              user_id: userId,
+              song_id: trade.songId,
+              quantity: holding.quantity,
+              avg_price: holding.avg_price,
+            },
+            { onConflict: 'user_id,song_id' }
+          )
+      : supabase
+          .from('portfolio')
+          .delete()
+          .eq('user_id', userId)
+          .eq('song_id', trade.songId),
+    supabase.from('transactions').insert({
+      user_id: userId,
+      song_id: trade.songId,
+      type: trade.type,
+      quantity: trade.quantity,
+      price: trade.price,
+      fee: trade.fee,
+    }),
+  ])
 }
 
 const AppContext = createContext(null)
@@ -97,15 +62,110 @@ const AppContext = createContext(null)
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, initialState)
 
-  const buySong = (songId, quantity) =>
-    dispatch({ type: 'BUY_SONG', payload: { songId, quantity } })
-  const sellSong = (songId, quantity) =>
-    dispatch({ type: 'SELL_SONG', payload: { songId, quantity } })
-  const settleDaily = () => dispatch({ type: 'SETTLE_DAILY' })
+  useEffect(() => {
+    if (!isSupabaseEnabled) return
+
+    supabase.auth.getSession().then(({ data }) => {
+      dispatch({
+        type: 'MERGE_STATE',
+        payload: { session: data.session, isAuthLoading: false },
+      })
+    })
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      dispatch({ type: 'MERGE_STATE', payload: { session, isAuthLoading: false } })
+    })
+
+    return () => listener.subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (!isSupabaseEnabled || !state.session) return
+
+    const userId = state.session.user.id
+    dispatch({ type: 'MERGE_STATE', payload: { isProfileLoading: true } })
+
+    async function loadProfile() {
+      const [{ data: profile }, { data: holdings }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', userId).single(),
+        supabase.from('portfolio').select('*').eq('user_id', userId),
+      ])
+
+      dispatch({
+        type: 'MERGE_STATE',
+        payload: {
+          balance: profile?.balance ?? mockUser.balance,
+          feeRate: profile?.fee_rate ?? mockUser.fee_rate,
+          lastSettlement: {
+            total_dividend: profile?.last_settlement_total ?? 0,
+            top_song_id: profile?.last_settlement_top_song_id ?? null,
+            fee_rate_today: profile?.last_settlement_fee_rate ?? mockUser.fee_rate,
+          },
+          portfolio: (holdings ?? []).map((h) => ({
+            song_id: h.song_id,
+            quantity: h.quantity,
+            avg_price: h.avg_price,
+          })),
+          isProfileLoading: false,
+        },
+      })
+    }
+
+    loadProfile()
+  }, [state.session])
+
+  const buySong = (songId, quantity) => {
+    const result = applyBuySong(state, songId, quantity)
+    if (!result) return
+    dispatch({ type: 'MERGE_STATE', payload: result.nextState })
+    if (isSupabaseEnabled && state.session) {
+      persistTrade(state.session.user.id, { ...state, ...result.nextState }, result.trade)
+    }
+  }
+
+  const sellSong = (songId, quantity) => {
+    const result = applySellSong(state, songId, quantity)
+    if (!result) return
+    dispatch({ type: 'MERGE_STATE', payload: result.nextState })
+    if (isSupabaseEnabled && state.session) {
+      persistTrade(state.session.user.id, { ...state, ...result.nextState }, result.trade)
+    }
+  }
+
+  const settleDaily = () => {
+    const nextState = applySettleDaily(state)
+    dispatch({ type: 'MERGE_STATE', payload: nextState })
+    if (isSupabaseEnabled && state.session) {
+      supabase
+        .from('profiles')
+        .update({
+          balance: nextState.balance,
+          fee_rate: nextState.feeRate,
+          last_settlement_total: nextState.lastSettlement.total_dividend,
+          last_settlement_top_song_id: nextState.lastSettlement.top_song_id,
+          last_settlement_fee_rate: nextState.lastSettlement.fee_rate_today,
+        })
+        .eq('id', state.session.user.id)
+    }
+  }
+
+  const signUp = (email, password) => supabase.auth.signUp({ email, password })
+  const signIn = (email, password) =>
+    supabase.auth.signInWithPassword({ email, password })
+  const signOut = () => supabase.auth.signOut()
 
   return (
     <AppContext.Provider
-      value={{ ...state, buySong, sellSong, settleDaily }}
+      value={{
+        ...state,
+        isSupabaseEnabled,
+        buySong,
+        sellSong,
+        settleDaily,
+        signUp,
+        signIn,
+        signOut,
+      }}
     >
       {children}
     </AppContext.Provider>

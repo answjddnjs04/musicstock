@@ -6,10 +6,24 @@ import { ReceiptModal } from './components/ReceiptModal'
 import { TradingModal } from './components/TradingModal'
 import { HomeScreen } from './screens/HomeScreen'
 import { PortfolioScreen } from './screens/PortfolioScreen'
+import { AuthScreen } from './screens/AuthScreen'
+
+function LoadingScreen() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted">
+      불러오는 중...
+    </div>
+  )
+}
 
 function AppContent() {
-  const { songs } = useApp()
+  const { songs, isSupabaseEnabled, session, isAuthLoading, isProfileLoading } =
+    useApp()
   const [tradeRequest, setTradeRequest] = useState(null)
+
+  if (isSupabaseEnabled && isAuthLoading) return <LoadingScreen />
+  if (isSupabaseEnabled && !session) return <AuthScreen />
+  if (isSupabaseEnabled && isProfileLoading) return <LoadingScreen />
 
   const handleTrade = (song, mode) => setTradeRequest({ song, mode })
   const closeTrade = () => setTradeRequest(null)
