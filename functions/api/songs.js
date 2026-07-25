@@ -11,66 +11,89 @@ const TRACK_QUERIES = [
   { song_id: 'song_10', title: 'Golden', artist: 'HUNTR/X' },
 ]
 
-async function getAccessToken(clientId, clientSecret) {
-  const credentials = btoa(`${clientId}:${clientSecret}`)
-  const res = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  })
-  if (!res.ok) throw new Error('Failed to get Spotify access token')
-  const data = await res.json()
-  return data.access_token
+const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3'
+
+function pickBestVideo(items) {
+  const isOfficialOrTopic = (item) => {
+    const channelTitle = item.snippet.channelTitle ?? ''
+    const title = item.snippet.title ?? ''
+    return (
+      channelTitle.toLowerCase().endsWith('- topic') ||
+      /official\s*audio/i.test(title)
+    )
+  }
+  return items.find(isOfficialOrTopic) ?? items[0] ?? null
 }
 
-async function searchTrack(token, { title, artist }) {
-  const query = encodeURIComponent(`track:${title} artist:${artist}`)
-  const res = await fetch(
-    `https://api.spotify.com/v1/search?q=${query}&type=track&limit=1`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  )
+async function searchVideoId(apiKey, { title, artist }) {
+  const query = encodeURIComponent(`${artist} ${title} official audio`)
+  const url = `${YOUTUBE_API_BASE}/search?part=snippet&type=video&videoCategoryId=10&maxResults=5&q=${query}&key=${apiKey}`
+  const res = await fetch(url)
   if (!res.ok) return null
   const data = await res.json()
-  return data.tracks?.items?.[0] ?? null
+  const best = pickBestVideo(data.items ?? [])
+  return best?.id?.videoId ?? null
+}
+
+async function fetchVideoDetails(apiKey, videoId) {
+  const url = `${YOUTUBE_API_BASE}/videos?part=snippet,statistics&id=${videoId}&key=${apiKey}`
+  const res = await fetch(url)
+  if (!res.ok) return null
+  const data = await res.json()
+  return data.items?.[0] ?? null
+}
+
+async function resolveTrack(apiKey, query) {
+  const videoId = await searchVideoId(apiKey, query)
+  if (!videoId) return { song_id: query.song_id, found: false }
+
+  const video = await fetchVideoDetails(apiKey, videoId)
+  if (!video) return { song_id: query.song_id, found: false }
+
+  const thumbnails = video.snippet.thumbnails ?? {}
+  const bestThumbnail =
+    thumbnails.maxres ?? thumbnails.high ?? thumbnails.medium ?? thumbnails.default
+
+  return {
+    song_id: query.song_id,
+    found: true,
+    title: query.title,
+    artist: query.artist,
+    video_id: videoId,
+    album_cover: bestThumbnail?.url ?? null,
+    view_count: Number(video.statistics?.viewCount ?? 0),
+  }
 }
 
 export async function onRequestGet(context) {
-  const clientId = context.env.SPOTIFY_CLIENT_ID
-  const clientSecret = context.env.SPOTIFY_CLIENT_SECRET
+  const apiKey = context.env.YOUTUBE_API_KEY
 
-  if (!clientId || !clientSecret) {
+  if (!apiKey) {
     return new Response(
-      JSON.stringify({ error: 'Spotify credentials not configured' }),
+      JSON.stringify({ error: 'YouTube API key not configured' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 
-  try {
-    const token = await getAccessToken(clientId, clientSecret)
+  const cache = caches.default
+  const cacheKey = new Request(context.request.url, context.request)
+  const cached = await cache.match(cacheKey)
+  if (cached) return cached
 
+  try {
     const results = await Promise.all(
-      TRACK_QUERIES.map(async (query) => {
-        const track = await searchTrack(token, query)
-        if (!track) return { song_id: query.song_id, found: false }
-        return {
-          song_id: query.song_id,
-          found: true,
-          title: track.name,
-          artist: track.artists.map((a) => a.name).join(', '),
-          album_cover: track.album.images?.[0]?.url ?? null,
-        }
-      })
+      TRACK_QUERIES.map((query) => resolveTrack(apiKey, query))
     )
 
-    return new Response(JSON.stringify({ songs: results }), {
+    const response = new Response(JSON.stringify({ songs: results }), {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'public, max-age=3600',
       },
     })
+
+    context.waitUntil(cache.put(cacheKey, response.clone()))
+    return response
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,

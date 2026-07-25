@@ -3,7 +3,7 @@ import { mockSongs } from '../data/mockSongs'
 import { mockUser } from '../data/mockUser'
 import { applyBuySong, applySellSong, applySettleDaily } from '../lib/trading'
 import { supabase } from '../lib/supabaseClient'
-import { fetchSpotifySongs } from '../lib/spotify'
+import { fetchYoutubeSongs } from '../lib/youtube'
 
 const isSupabaseEnabled = !!supabase
 
@@ -81,7 +81,7 @@ export function AppProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    fetchSpotifySongs()
+    fetchYoutubeSongs()
       .then((results) => {
         dispatch({
           type: 'MERGE_STATE',
@@ -96,6 +96,7 @@ export function AppProvider({ children }) {
                     title: match.title,
                     artist: match.artist,
                     album_cover: match.album_cover ?? song.album_cover,
+                    daily_views_growth: match.view_count ?? song.daily_views_growth,
                   }
                 : song
             }),
