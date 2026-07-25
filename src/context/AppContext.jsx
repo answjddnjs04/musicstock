@@ -3,6 +3,7 @@ import { mockSongs } from '../data/mockSongs'
 import { mockUser } from '../data/mockUser'
 import { applyBuySong, applySellSong, applySettleDaily } from '../lib/trading'
 import { supabase } from '../lib/supabaseClient'
+import { fetchSpotifySongs } from '../lib/spotify'
 
 const isSupabaseEnabled = !!supabase
 
@@ -77,6 +78,31 @@ export function AppProvider({ children }) {
     })
 
     return () => listener.subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    fetchSpotifySongs()
+      .then((results) => {
+        dispatch({
+          type: 'MERGE_STATE',
+          payload: {
+            songs: state.songs.map((song) => {
+              const match = results.find(
+                (r) => r.song_id === song.song_id && r.found
+              )
+              return match
+                ? {
+                    ...song,
+                    title: match.title,
+                    artist: match.artist,
+                    album_cover: match.album_cover ?? song.album_cover,
+                  }
+                : song
+            }),
+          },
+        })
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
