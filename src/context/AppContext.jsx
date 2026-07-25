@@ -1,6 +1,8 @@
 import { createContext, useContext, useReducer } from 'react'
 import { mockSongs } from '../data/mockSongs'
 import { mockUser } from '../data/mockUser'
+import { calculateFeeRate, calculateInflationRate, calculateTradeFee } from '../lib/fee'
+import { calculatePortfolioDividend, getTopDividendContributor } from '../lib/dividend'
 
 const initialState = {
   songs: mockSongs,
@@ -18,7 +20,7 @@ function appReducer(state, action) {
       if (!song || quantity <= 0) return state
 
       const cost = song.current_price * quantity
-      const fee = Math.round(cost * (state.feeRate / 100))
+      const fee = calculateTradeFee(cost, state.feeRate)
       const totalCost = cost + fee
       if (totalCost > state.balance) return state
 
@@ -53,7 +55,7 @@ function appReducer(state, action) {
       }
 
       const proceeds = song.current_price * quantity
-      const fee = Math.round(proceeds * (state.feeRate / 100))
+      const fee = calculateTradeFee(proceeds, state.feeRate)
       const netProceeds = proceeds - fee
       const remaining = holding.quantity - quantity
 
@@ -68,8 +70,21 @@ function appReducer(state, action) {
     }
 
     case 'SETTLE_DAILY': {
-      // 9단계에서 src/lib/dividend.js 배당 계산 로직과 연결 예정
-      return state
+      const totalDividend = calculatePortfolioDividend(state.songs, state.portfolio)
+      const topSong = getTopDividendContributor(state.songs, state.portfolio)
+      const inflationRate = calculateInflationRate(totalDividend)
+      const nextFeeRate = calculateFeeRate(inflationRate)
+
+      return {
+        ...state,
+        balance: state.balance + totalDividend,
+        feeRate: nextFeeRate,
+        lastSettlement: {
+          total_dividend: totalDividend,
+          top_song_id: topSong?.song_id ?? null,
+          fee_rate_today: nextFeeRate,
+        },
+      }
     }
 
     default:
