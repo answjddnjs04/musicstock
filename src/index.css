@@ -6,11 +6,16 @@
   --color-rise: #00ff87;
   --color-fall: #ff2e93;
   --color-muted: #8a94a6;
+
+  --radius-card: 1rem;
+  --radius-pill: 999px;
+
+  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
 }
 
 body {
   margin: 0;
   background: var(--color-background);
   color: #ffffff;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-sans);
 }
