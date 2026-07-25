@@ -1,5 +1,5 @@
 export function calculateMarketCap(song) {
-  return song.current_price * song.trading_volume
+  return song.current_price * (song.total_shares ?? 1)
 }
 
 export function getTopRising(songs, count = 3) {

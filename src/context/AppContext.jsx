@@ -1,9 +1,7 @@
 import { createContext, useContext, useEffect, useReducer } from 'react'
-import { mockSongs } from '../data/mockSongs'
 import { mockUser } from '../data/mockUser'
 import { applyBuySong, applySellSong, applySettleDaily } from '../lib/trading'
 import { supabase } from '../lib/supabaseClient'
-import { fetchYoutubeSongs } from '../lib/youtube'
 
 const isSupabaseEnabled = !!supabase
 const ADMIN_EMAIL = 'infinitefoever@naver.com'
@@ -17,7 +15,7 @@ function songToRow(song) {
     current_price: song.current_price,
     daily_views_growth: song.daily_views_growth,
     price_change_rate: song.price_change_rate,
-    trading_volume: song.trading_volume,
+    total_shares: song.total_shares,
     dividend_yield_ratio: song.dividend_yield_ratio,
   }
 }
@@ -31,13 +29,13 @@ function rowToSong(row) {
     current_price: row.current_price,
     daily_views_growth: row.daily_views_growth,
     price_change_rate: row.price_change_rate,
-    trading_volume: row.trading_volume,
+    total_shares: row.total_shares,
     dividend_yield_ratio: row.dividend_yield_ratio,
   }
 }
 
 const initialState = {
-  songs: mockSongs,
+  songs: [],
   portfolio: mockUser.portfolio,
   balance: mockUser.balance,
   feeRate: mockUser.fee_rate,
@@ -107,32 +105,6 @@ export function AppProvider({ children }) {
     })
 
     return () => listener.subscription.unsubscribe()
-  }, [])
-
-  useEffect(() => {
-    fetchYoutubeSongs()
-      .then((results) => {
-        dispatch({
-          type: 'MERGE_STATE',
-          payload: {
-            songs: state.songs.map((song) => {
-              const match = results.find(
-                (r) => r.song_id === song.song_id && r.found
-              )
-              return match
-                ? {
-                    ...song,
-                    title: match.title,
-                    artist: match.artist,
-                    album_cover: match.album_cover ?? song.album_cover,
-                    daily_views_growth: match.view_count ?? song.daily_views_growth,
-                  }
-                : song
-            }),
-          },
-        })
-      })
-      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -244,6 +216,23 @@ export function AppProvider({ children }) {
     }
   }
 
+  const updateSong = async (songId, patch) => {
+    if (!isAdmin) return
+
+    dispatch({
+      type: 'MERGE_STATE',
+      payload: {
+        songs: state.songs.map((s) =>
+          s.song_id === songId ? { ...s, ...patch } : s
+        ),
+      },
+    })
+
+    if (isSupabaseEnabled) {
+      await supabase.from('songs').update(patch).eq('song_id', songId)
+    }
+  }
+
   const signUp = (email, password) => supabase.auth.signUp({ email, password })
   const signIn = (email, password) =>
     supabase.auth.signInWithPassword({ email, password })
@@ -259,6 +248,7 @@ export function AppProvider({ children }) {
         sellSong,
         settleDaily,
         registerSongs,
+        updateSong,
         signUp,
         signIn,
         signOut,

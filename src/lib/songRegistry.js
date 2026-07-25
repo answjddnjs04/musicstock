@@ -1,7 +1,11 @@
-import { calculateSongDividend } from './dividend'
-
 const DEFAULT_PRICE = 1000
 const PRICE_PER_VIEW = 0.01
+const DEFAULT_TOTAL_SHARES = 1
+
+function randomInRange(min, max, decimals = 1) {
+  const value = Math.random() * (max - min) + min
+  return Number(value.toFixed(decimals))
+}
 
 export function buildSongFromYoutubeTrack(track) {
   const currentPrice =
@@ -9,23 +13,16 @@ export function buildSongFromYoutubeTrack(track) {
       ? Math.round(track.view_count * PRICE_PER_VIEW)
       : DEFAULT_PRICE
 
-  const song = {
+  return {
     song_id: track.song_id,
     title: track.title,
     artist: track.artist,
     album_cover: track.album_cover,
     current_price: currentPrice,
     daily_views_growth: track.view_count,
-    price_change_rate: 0,
-    trading_volume: 0,
-    dividend_yield_ratio: 0,
+    total_shares: DEFAULT_TOTAL_SHARES,
+    // 실제 주가 등락/배당 이력이 아직 없어서 초기값은 랜덤으로 채움
+    price_change_rate: randomInRange(-15, 15),
+    dividend_yield_ratio: randomInRange(1, 8),
   }
-
-  const dividendPerShare = calculateSongDividend(song, 1)
-  song.dividend_yield_ratio =
-    currentPrice > 0
-      ? Number(((dividendPerShare / currentPrice) * 100).toFixed(1))
-      : 0
-
-  return song
 }

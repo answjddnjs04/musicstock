@@ -84,7 +84,7 @@ create table public.songs (
   current_price bigint not null default 1000,
   daily_views_growth bigint not null default 0,
   price_change_rate numeric not null default 0,
-  trading_volume bigint not null default 0,
+  total_shares bigint not null default 1,
   dividend_yield_ratio numeric not null default 0,
   created_at timestamptz not null default now()
 );

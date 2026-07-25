@@ -4,6 +4,7 @@ import { RankColumn } from '../components/RankColumn'
 import { MusicCard } from '../components/MusicCard'
 import { FeeBadge } from '../components/FeeBadge'
 import { ArtistRegisterPanel } from '../components/ArtistRegisterPanel'
+import { AdminStockPanel } from '../components/AdminStockPanel'
 import {
   calculateMarketCap,
   getTopDividend,
@@ -12,7 +13,7 @@ import {
 } from '../lib/rankings'
 
 const BASE_TABS = ['인기 음악', '보유 음악', '관심 음악', '거래 목록', '검색 음악']
-const ADMIN_TABS = [...BASE_TABS, '아티스트 등록']
+const ADMIN_TABS = [...BASE_TABS, '아티스트 등록', '주가 관리']
 
 function ChangeText({ rate }) {
   const isRise = rate >= 0
@@ -118,9 +119,17 @@ export function HomeScreen({ onTrade }) {
         <div className="px-4 pb-4">
           <ArtistRegisterPanel />
         </div>
+      ) : activeTab === '주가 관리' ? (
+        <div className="px-4 pb-4">
+          <AdminStockPanel />
+        </div>
       ) : activeTab !== '인기 음악' ? (
         <div className="mx-4 flex h-40 items-center justify-center rounded-card bg-surface text-sm text-muted">
           준비 중인 화면이에요.
+        </div>
+      ) : songs.length === 0 ? (
+        <div className="mx-4 flex h-40 items-center justify-center rounded-card bg-surface text-sm text-muted">
+          아직 등록된 음원이 없어요.
         </div>
       ) : (
         <div className="grid w-full grid-cols-1 gap-6 px-4 pb-4 md:grid-cols-3">
