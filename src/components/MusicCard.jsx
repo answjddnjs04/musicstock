@@ -1,3 +1,6 @@
+// 곡 하나를 보여주는 공용 카드. variant="card"(그리드용, 세로형)와
+// "list"(가로 한 줄형) 두 레이아웃을 지원해서 홈 랭킹/검색 결과/포트폴리오에서
+// 재사용한다. 재고가 없는 곡은 매수 버튼이 "품절"로 바뀌고 비활성화된다.
 import { getAvailableShares } from '../lib/trading'
 
 function ChangeBadge({ rate, className = '' }) {

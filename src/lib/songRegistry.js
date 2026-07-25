@@ -1,3 +1,6 @@
+// 아티스트 검색 결과(YouTube 조회수 포함)를 실제 songs 테이블에 넣을 수 있는
+// 형태로 변환. 관리자가 곡을 등록하는 순간 딱 한 번만 호출된다 — 등록 이후의
+// 가격 변동은 아직 없고(실거래 이력 미구현), 최초값만 여기서 정해진다.
 const DEFAULT_PRICE = 1000
 const PRICE_PER_VIEW = 0.01
 const DEFAULT_TOTAL_SHARES = 1

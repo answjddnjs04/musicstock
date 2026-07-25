@@ -1,3 +1,7 @@
+// 관리자 전용 화면: 아티스트명 검색 → Spotify 정식곡(최대 5곡) + YouTube 조회수
+// 후보를 보여주고, 체크박스로 고른 곡만 registerSongs()로 Supabase songs 테이블에
+// 저장한다. isAdmin이 아니면 null을 반환해 아무것도 렌더링하지 않는다(방어적 체크 —
+// 실제 접근 제어는 HomeScreen의 탭 노출 여부 + Supabase RLS가 담당).
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { searchArtistTracks } from '../lib/artistTracks'

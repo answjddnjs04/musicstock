@@ -1,3 +1,7 @@
+// 홈(마켓) 화면. 탭은 로그인한 계정에 따라 두 세트 중 하나가 보인다 —
+// 일반 유저는 BASE_TABS, 관리자(isAdmin)는 여기에 "아티스트 등록"/"주가 관리"가
+// 추가된 ADMIN_TABS. 검색어를 입력하면 "인기 음악" 탭의 랭킹을 필터링하는 게
+// 아니라 별도의 "검색 음악" 탭으로 자동 전환된다(랭킹은 항상 전체 마켓 기준 유지).
 import { useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { RankColumn } from '../components/RankColumn'

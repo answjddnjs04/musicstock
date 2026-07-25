@@ -1,3 +1,8 @@
+// 매수/매도/정산의 "다음 상태가 뭐가 되어야 하는가"를 계산하는 순수 함수 모음.
+// React나 Supabase를 전혀 모르기 때문에 AppContext에서 재사용하기도, 테스트하기도 쉽다.
+// 실패 조건(잔고 부족, 재고 부족, 보유 수량 초과 등)을 만나면 null을 반환해서
+// 호출부가 "거래 불가"를 판단하게 한다. 재고 체크는 여기서 1차로(빠른 UX 피드백)
+// 하지만, 여러 유저가 동시에 사는 경우의 최종 방어선은 Supabase의 buy_shares RPC다.
 import { calculateTradeFee, calculateFeeRate, calculateInflationRate } from './fee'
 import { calculatePortfolioDividend, getTopDividendContributor } from './dividend'
 

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+/* Dark Synth 디자인 시스템. Tailwind v4는 --color-*로 정의한 토큰마다
+   text-rise, bg-fall 같은 유틸리티를 자동 생성해준다. */
 @theme {
   --color-background: #0b0e14;
   --color-surface: #161b26;

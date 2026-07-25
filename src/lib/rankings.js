@@ -1,3 +1,4 @@
+// 홈 화면 3대 랭킹(급상승/배당/시가총액)에 쓰이는 정렬 함수 모음.
 export function calculateMarketCap(song) {
   return song.current_price * (song.total_shares ?? 1)
 }

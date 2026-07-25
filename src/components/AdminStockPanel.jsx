@@ -1,3 +1,6 @@
+// 관리자 전용 "주가 관리" 화면: 곡별 total_shares(주식분할 개수)를 바로 조정한다.
+// shares_sold(현재까지 팔린 수량)는 여기서 못 바꾼다 — 그건 buy_shares/sell_shares
+// RPC만 건드릴 수 있는 값이라, 관리자가 실수로 재고 카운트를 깨뜨릴 수 없다.
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 

@@ -1,3 +1,7 @@
+// 접속 시 자동으로 뜨는 "어제 정산 결과" 모달. "오늘 하루 보지 않기"를 누르면
+// localStorage에 다음 자정 타임스탬프를 저장해두고, 그 전까지는 mount 시점에
+// isHiddenForToday()가 true를 반환해서 애초에 열리지 않는다(서버 상태 아님,
+// 기기/브라우저별로 따로 기억됨).
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { calculateSongDividend } from '../lib/dividend'

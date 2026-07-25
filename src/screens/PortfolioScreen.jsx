@@ -1,3 +1,5 @@
+// "내 LP" 화면: 보유 곡 목록 + 곡별 "오늘 밤 예상 배당금"을 실시간 계산해서 보여준다
+// (실제 지급은 정산이 실행돼야 반영됨, 여기 숫자는 어디까지나 예상치).
 import { useApp } from '../context/AppContext'
 import { MusicCard } from '../components/MusicCard'
 import { calculateSongDividend } from '../lib/dividend'

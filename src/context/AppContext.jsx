@@ -1,3 +1,8 @@
+// 앱 전역 상태(로그인 세션, 보유 잔고/포트폴리오, 마켓에 등록된 songs 목록)를
+// 관리하는 단일 Context. Supabase가 설정되어 있지 않으면(.env 없음) 로그인 없이
+// 로컬 상태만으로 동작하고, 설정되어 있으면 로그인 사용자의 데이터를 DB와 동기화한다.
+// 매수/매도/정산의 실제 숫자 계산은 여기서 하지 않고 lib/trading.js의 순수 함수에
+// 위임한다 — 이 파일은 "그 결과를 상태에 반영하고 Supabase에 저장하는 것"만 담당.
 import { createContext, useContext, useEffect, useReducer } from 'react'
 import { mockUser } from '../data/mockUser'
 import { applyBuySong, applySellSong, applySettleDaily } from '../lib/trading'

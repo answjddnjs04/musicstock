@@ -1,3 +1,6 @@
+// 배당금 = 곡의 조회수 × 내 지분율 × 배당 계수. 지분율은 "가상의 총 발행량"
+// TOTAL_SHARES_PER_SONG을 기준으로 계산하는 것으로, 실제 매수 가능한 재고 수량인
+// songs.total_shares(기본 1주)와는 별개의 값이니 혼동하지 말 것.
 export const TOTAL_SHARES_PER_SONG = 100_000
 export const BASE_DIVIDEND_COEFFICIENT = 30
 

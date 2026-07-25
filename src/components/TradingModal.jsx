@@ -1,3 +1,7 @@
+// 매수/매도 확인 모달. initialSong은 목록에서 클릭한 시점의 스냅샷이라 song_id로
+// 최신 songs 배열에서 다시 찾아 쓴다(재고/가격이 그 사이 바뀌었을 수 있어서).
+// 실제 확정은 buySong/sellSong이 Supabase RPC 결과를 기다린 뒤에 이뤄지므로,
+// 재고가 이미 소진됐다면 여기서 서버가 되돌려준 에러 메시지를 그대로 보여준다.
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { calculateTradeFee } from '../lib/fee'

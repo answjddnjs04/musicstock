@@ -1,3 +1,10 @@
+// Cloudflare Pages Function: GET /api/artist-tracks?artist=NewJeans
+// Spotify Client Credentials로 노이즈(MV/팬캠 등) 없는 정식 발매곡을 찾고,
+// 그 결과를 YouTube Official Audio/Topic 채널의 조회수와 매핑해서 돌려준다.
+// SPOTIFY_CLIENT_ID/SECRET, YOUTUBE_API_KEY는 Cloudflare Pages 환경변수에만
+// 존재하고 브라우저로는 절대 내려가지 않는다 — 프론트는 이 엔드포인트만 호출.
+// Spotify 쪽이 실패하면(예: 앱 소유 계정 Premium 미구독으로 403) 조용히 죽지 않고
+// YouTube 단독 검색으로 자동 폴백해서 기능이 계속 동작하게 한다.
 const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token'
 const SPOTIFY_API_BASE = 'https://api.spotify.com/v1'
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3'

@@ -1,3 +1,6 @@
+// 로그인/회원가입을 한 화면에서 토글로 처리(별도 페이지 라우팅 없음).
+// isSupabaseEnabled가 false면 App.jsx가 이 화면 자체를 건너뛰므로,
+// 이 컴포넌트는 Supabase가 설정된 배포 환경에서만 실제로 보인다.
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 

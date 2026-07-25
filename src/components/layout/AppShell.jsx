@@ -1,3 +1,7 @@
+// 앱의 최상위 뼈대: 전광판(sticky) + 화면 본문 + 하단 홈/포트폴리오 탭바.
+// 화면 전환은 react-router 없이 이 컴포넌트의 useState로만 처리한다(화면이
+// 2개뿐이라 라우팅 라이브러리가 필요 없음). max-w-[1600px]로 초광폭 모니터에서도
+// 콘텐츠가 과하게 늘어나지 않게 막는다.
 import { useState } from 'react'
 
 const TABS = [

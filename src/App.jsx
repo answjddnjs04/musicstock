@@ -1,3 +1,6 @@
+// 앱 진입점. 인증 게이트(로딩 → 로그인 필요 → 프로필 로딩 → 실제 화면) 순서로
+// 렌더링을 분기하고, 매매 모달은 어느 화면에서 매수/매도를 눌렀든 여기서 하나만
+// 띄운다(홈/포트폴리오 둘 다 onTrade로 이 상태를 올려보냄).
 import { useState } from 'react'
 import { AppProvider, useApp } from './context/AppContext'
 import { AppShell } from './components/layout/AppShell'
