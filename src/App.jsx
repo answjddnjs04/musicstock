@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { AppProvider, useApp } from './context/AppContext'
 import { AppShell } from './components/layout/AppShell'
 import { TickerBar } from './components/TickerBar'
-import { FeeBadge } from './components/FeeBadge'
 import { ReceiptModal } from './components/ReceiptModal'
 import { TradingModal } from './components/TradingModal'
 import { HomeScreen } from './screens/HomeScreen'
@@ -24,7 +23,6 @@ function AppContent() {
           portfolio: <PortfolioScreen onTrade={handleTrade} />,
         }}
       />
-      <FeeBadge />
       <ReceiptModal />
       {tradeRequest && (
         <TradingModal

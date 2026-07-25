@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext'
 import { HeroRankCard } from '../components/HeroRankCard'
 import { RankingTable } from '../components/RankingTable'
 import { MusicCard } from '../components/MusicCard'
+import { FeeBadge } from '../components/FeeBadge'
 import {
   calculateMarketCap,
   getTopDividend,
@@ -23,16 +24,14 @@ function ChangeText({ rate }) {
 
 function TopTabs({ activeTab, onChange }) {
   return (
-    <div className="flex gap-4 overflow-x-auto border-b border-white/5 text-sm">
+    <div className="flex flex-wrap gap-2">
       {TOP_TABS.map((tab) => (
         <button
           key={tab}
           type="button"
           onClick={() => onChange(tab)}
-          className={`-mb-px shrink-0 whitespace-nowrap border-b-2 pb-2 text-xs font-medium transition-colors sm:text-sm ${
-            activeTab === tab
-              ? 'border-white text-white'
-              : 'border-transparent text-muted'
+          className={`flex h-[30px] min-w-[120px] items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === tab ? 'bg-rise/10 text-rise' : 'bg-surface text-muted'
           }`}
         >
           {tab}
@@ -75,7 +74,10 @@ export function HomeScreen({ onTrade }) {
       <div className="flex flex-col gap-3 bg-gradient-to-b from-[#161b30] to-background px-4 pb-4 pt-4">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold">마켓</h1>
-          <p className="text-sm font-bold">{balance.toLocaleString()}콩</p>
+          <div className="flex items-center gap-2">
+            <FeeBadge />
+            <p className="text-base font-bold">{balance.toLocaleString()}콩</p>
+          </div>
         </div>
 
         <input
@@ -115,7 +117,7 @@ export function HomeScreen({ onTrade }) {
           준비 중인 화면이에요.
         </div>
       ) : (
-        <div className="flex flex-col gap-5 px-4 pb-4">
+        <div className="flex flex-col gap-3 px-4 pb-4">
           <div className="grid grid-cols-3 gap-2">
             {topRising && (
               <HeroRankCard

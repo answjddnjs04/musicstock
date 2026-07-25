@@ -3,7 +3,7 @@ export function HeroRankCard({ label, mainValue, subValue, song, rank = 1, onSel
     <button
       type="button"
       onClick={() => onSelect?.(song)}
-      className="flex flex-col gap-2 rounded-card border border-white/5 bg-surface/80 p-2 text-left"
+      className="flex flex-col items-center gap-1 rounded-card border border-white/5 bg-surface/80 p-2 text-center"
     >
       <span className="text-[10px] font-medium text-muted sm:text-[11px]">
         {label}
@@ -17,17 +17,16 @@ export function HeroRankCard({ label, mainValue, subValue, song, rank = 1, onSel
       <img
         src={song.album_cover}
         alt={song.title}
-        className="aspect-square w-full rounded-xl object-cover"
+        className="h-14 w-14 rounded-xl object-cover"
       />
 
       <div className="flex items-center gap-1">
         <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-rise/10 text-[9px] font-bold text-rise">
           {rank}
         </span>
-        <div className="min-w-0">
-          <p className="truncate text-[11px] font-semibold">{song.title}</p>
-          <p className="truncate text-[9px] text-muted">{song.artist}</p>
-        </div>
+        <p className="max-w-[72px] truncate text-[10px] font-semibold">
+          {song.title}
+        </p>
       </div>
     </button>
   )
