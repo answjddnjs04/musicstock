@@ -103,4 +103,4 @@
    `src/lib/dividend.js`를 3단계 `settleDaily` 액션과 연결. `src/components/ReceiptModal.jsx`: 첫 진입 시 자동 오픈, 어제 배당금/효자 곡/오늘 수수료율 표시, [영수증 자랑하기] 버튼(공유는 스텁으로 우선 처리).
 
 10. **통합 · 반응형 · 배포 점검**
-    `App.jsx`에서 4·6·7·8·9단계를 최종 연결, 전체 플로우(접속→영수증→홈 탐색→매수→포트폴리오 확인) 수동 테스트. 모바일 반응형 점검, `npm run build` 확인 후 Cloudflare Pages배포.
+    `App.jsx`에서 4·6·7·8·9단계를 최종 연결, 전체 플로우(접속→영수증→홈 탐색→매수→포트폴리오 확인) 수동 테스트. 모바일 반응형 점검, `npm run build` 확인 후 Cloudflare Pages재배포.
