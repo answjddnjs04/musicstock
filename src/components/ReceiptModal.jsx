@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
+import { calculateSongDividend } from '../lib/dividend'
 
 export function ReceiptModal() {
-  const { songs, lastSettlement } = useApp()
+  const { songs, portfolio, lastSettlement } = useApp()
   const [isOpen, setIsOpen] = useState(true)
 
   if (!isOpen) return null
 
   const topSong = songs.find((s) => s.song_id === lastSettlement.top_song_id)
+  const topHolding = portfolio.find((p) => p.song_id === lastSettlement.top_song_id)
+  const topSongDividend =
+    topSong && topHolding ? calculateSongDividend(topSong, topHolding.quantity) : null
 
   const handleShare = () => {
     if (navigator.share) {
@@ -36,8 +40,15 @@ export function ReceiptModal() {
             </span>
           </div>
           <div className="flex justify-between">
-            <span>어제의 효자 곡</span>
-            <span className="font-semibold">{topSong ? topSong.title : '-'}</span>
+            <span>최고 배당 수익 곡</span>
+            <span className="font-semibold">
+              {topSong ? topSong.title : '-'}
+              {topSongDividend !== null && (
+                <span className="ml-1 text-emerald-600">
+                  (+{topSongDividend.toLocaleString()}콩)
+                </span>
+              )}
+            </span>
           </div>
           <div className="flex justify-between">
             <span>오늘 수수료율</span>

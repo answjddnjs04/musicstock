@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { HeroRankCard } from '../components/HeroRankCard'
 import { RankingTable } from '../components/RankingTable'
+import { MusicCard } from '../components/MusicCard'
 import {
   calculateMarketCap,
   getTopDividend,
@@ -9,7 +10,7 @@ import {
   getTopVolume,
 } from '../lib/rankings'
 
-const TOP_TABS = ['인기 음악', '보유 음악', '관심 음악', '거래 목록']
+const TOP_TABS = ['인기 음악', '보유 음악', '관심 음악', '거래 목록', '검색 음악']
 
 function ChangeText({ rate }) {
   const isRise = rate >= 0
@@ -22,13 +23,13 @@ function ChangeText({ rate }) {
 
 function TopTabs({ activeTab, onChange }) {
   return (
-    <div className="flex gap-4 border-b border-white/5 text-sm">
+    <div className="flex gap-4 overflow-x-auto border-b border-white/5 text-sm">
       {TOP_TABS.map((tab) => (
         <button
           key={tab}
           type="button"
           onClick={() => onChange(tab)}
-          className={`-mb-px border-b-2 pb-2 text-xs font-medium transition-colors sm:text-sm ${
+          className={`-mb-px shrink-0 whitespace-nowrap border-b-2 pb-2 text-xs font-medium transition-colors sm:text-sm ${
             activeTab === tab
               ? 'border-white text-white'
               : 'border-transparent text-muted'
@@ -47,8 +48,8 @@ export function HomeScreen({ onTrade }) {
   const [query, setQuery] = useState('')
 
   const filteredSongs = useMemo(() => {
-    if (!query.trim()) return songs
     const q = query.trim().toLowerCase()
+    if (!q) return []
     return songs.filter(
       (s) =>
         s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)
@@ -61,6 +62,14 @@ export function HomeScreen({ onTrade }) {
 
   const handleSelect = (song) => onTrade?.(song, 'buy')
 
+  const handleQueryChange = (e) => {
+    const value = e.target.value
+    setQuery(value)
+    if (value.trim() !== '') {
+      setActiveTab('검색 음악')
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 bg-gradient-to-b from-[#161b30] to-background px-4 pb-4 pt-4">
@@ -71,7 +80,7 @@ export function HomeScreen({ onTrade }) {
 
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={handleQueryChange}
           placeholder="음악명 또는 아티스트명을 입력하세요"
           className="w-full rounded-pill bg-surface px-4 py-2 text-sm text-white placeholder:text-muted focus:outline-none"
         />
@@ -79,7 +88,29 @@ export function HomeScreen({ onTrade }) {
         <TopTabs activeTab={activeTab} onChange={setActiveTab} />
       </div>
 
-      {activeTab !== '인기 음악' ? (
+      {activeTab === '검색 음악' ? (
+        <div className="flex flex-col gap-2 px-4 pb-4">
+          {query.trim() === '' ? (
+            <div className="flex h-40 items-center justify-center rounded-card bg-surface text-sm text-muted">
+              검색어를 입력해주세요.
+            </div>
+          ) : filteredSongs.length === 0 ? (
+            <div className="flex h-40 items-center justify-center rounded-card bg-surface text-sm text-muted">
+              검색 결과가 없어요.
+            </div>
+          ) : (
+            filteredSongs.map((song) => (
+              <MusicCard
+                key={song.song_id}
+                song={song}
+                variant="list"
+                onBuy={(s) => onTrade?.(s, 'buy')}
+                onSell={(s) => onTrade?.(s, 'sell')}
+              />
+            ))
+          )}
+        </div>
+      ) : activeTab !== '인기 음악' ? (
         <div className="mx-4 flex h-40 items-center justify-center rounded-card bg-surface text-sm text-muted">
           준비 중인 화면이에요.
         </div>
@@ -97,7 +128,7 @@ export function HomeScreen({ onTrade }) {
             )}
             {topDividend && (
               <HeroRankCard
-                label="배당 왕"
+                label="배당 수익률"
                 mainValue={`${topDividend.dividend_yield_ratio}%`}
                 subValue={<span className="text-rise">배당 수익률 1위</span>}
                 song={topDividend}
@@ -118,13 +149,13 @@ export function HomeScreen({ onTrade }) {
           <div className="grid grid-cols-3 gap-2">
             <RankingTable
               title="주가 급상승 TOP 8"
-              songs={getTopRising(filteredSongs, 8)}
+              songs={getTopRising(songs, 8)}
               renderStat={(song) => <ChangeText rate={song.price_change_rate} />}
               onSelect={handleSelect}
             />
             <RankingTable
               title="배당 수익률 TOP 8"
-              songs={getTopDividend(filteredSongs, 8)}
+              songs={getTopDividend(songs, 8)}
               renderStat={(song) => (
                 <span className="text-[10px] font-semibold text-rise sm:text-xs">
                   {song.dividend_yield_ratio}%
@@ -134,7 +165,7 @@ export function HomeScreen({ onTrade }) {
             />
             <RankingTable
               title="시가총액 TOP 8"
-              songs={getTopVolume(filteredSongs, 8)}
+              songs={getTopVolume(songs, 8)}
               renderStat={(song) => (
                 <span className="text-[10px] font-semibold text-white sm:text-xs">
                   {calculateMarketCap(song).toLocaleString()}
