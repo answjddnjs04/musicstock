@@ -14,7 +14,7 @@ export function ReceiptModal() {
       navigator
         .share({
           title: 'MusicStock 영수증',
-          text: `어제 배당금 ${lastSettlement.total_dividend.toLocaleString()}콩을 받았어요! 🎵`,
+          text: `어제 배당금 ${lastSettlement.total_dividend.toLocaleString()}콩을 받았어요.`,
         })
         .catch(() => {})
     }
@@ -26,7 +26,7 @@ export function ReceiptModal() {
         <p className="mb-1 text-center text-xs tracking-widest text-muted">
           MUSIC RECEIPT
         </p>
-        <p className="mb-4 text-center text-lg font-bold">🎵 오늘의 정산 🎵</p>
+        <p className="mb-4 text-center text-lg font-bold">오늘의 정산</p>
 
         <div className="mb-4 space-y-2 border-y border-dashed border-black/20 py-4 text-sm">
           <div className="flex justify-between">

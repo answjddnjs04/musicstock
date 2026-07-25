@@ -1,3 +1,7 @@
+export function calculateMarketCap(song) {
+  return song.current_price * song.trading_volume
+}
+
 export function getTopRising(songs, count = 3) {
   return [...songs]
     .sort((a, b) => b.price_change_rate - a.price_change_rate)
@@ -12,6 +16,6 @@ export function getTopDividend(songs, count = 3) {
 
 export function getTopVolume(songs, count = 3) {
   return [...songs]
-    .sort((a, b) => b.trading_volume - a.trading_volume)
+    .sort((a, b) => calculateMarketCap(b) - calculateMarketCap(a))
     .slice(0, count)
 }

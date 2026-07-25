@@ -53,7 +53,7 @@ export function MusicCard({ song, variant = 'card', onBuy, onSell }) {
       <img
         src={song.album_cover}
         alt={song.title}
-        className="aspect-square w-full rounded-lg object-cover"
+        className="h-16 w-16 rounded-lg object-cover"
       />
       <div>
         <p className="truncate text-sm font-semibold">{song.title}</p>
