@@ -118,7 +118,7 @@ export function HomeScreen({ onTrade }) {
         </div>
       ) : (
         <div className="flex flex-col gap-3 px-4 pb-4">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {topRising && (
               <HeroRankCard
                 label="주가 급상승"
