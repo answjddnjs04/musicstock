@@ -10,6 +10,7 @@ export function ArtistRegisterPanel() {
   const [isSearching, setIsSearching] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
   const [error, setError] = useState('')
+  const [warning, setWarning] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
   if (!isAdmin) return null
@@ -21,10 +22,12 @@ export function ArtistRegisterPanel() {
 
     setIsSearching(true)
     setError('')
+    setWarning('')
     setSuccessMessage('')
 
     try {
-      const tracks = await searchArtistTracks(query)
+      const { songs: tracks, warning: searchWarning } = await searchArtistTracks(query)
+      if (searchWarning) setWarning(searchWarning)
       if (tracks.length === 0) {
         setError('검색 결과가 없어요.')
         setCandidates([])
@@ -89,6 +92,7 @@ export function ArtistRegisterPanel() {
       </form>
 
       {error && <p className="text-xs text-fall">{error}</p>}
+      {warning && <p className="text-xs text-muted">{warning}</p>}
       {successMessage && <p className="text-xs text-rise">{successMessage}</p>}
 
       {candidates.length > 0 && (

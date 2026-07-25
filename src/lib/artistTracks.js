@@ -4,5 +4,5 @@ export async function searchArtistTracks(artistName) {
   if (!res.ok) {
     throw new Error(data.error ?? '검색에 실패했어요.')
   }
-  return data.songs ?? []
+  return { songs: data.songs ?? [], warning: data.warning ?? null }
 }

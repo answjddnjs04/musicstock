@@ -2,11 +2,29 @@ import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { calculateSongDividend } from '../lib/dividend'
 
+const HIDE_UNTIL_KEY = 'hideReceiptUntil'
+
+function isHiddenForToday() {
+  const hideUntil = Number(localStorage.getItem(HIDE_UNTIL_KEY) ?? 0)
+  return Date.now() < hideUntil
+}
+
 export function ReceiptModal() {
   const { songs, portfolio, lastSettlement } = useApp()
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(() => !isHiddenForToday())
 
   if (!isOpen) return null
+
+  const handleHideToday = () => {
+    const now = new Date()
+    const nextMidnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1
+    )
+    localStorage.setItem(HIDE_UNTIL_KEY, String(nextMidnight.getTime()))
+    setIsOpen(false)
+  }
 
   const topSong = songs.find((s) => s.song_id === lastSettlement.top_song_id)
   const topHolding = portfolio.find((p) => p.song_id === lastSettlement.top_song_id)
@@ -72,6 +90,14 @@ export function ReceiptModal() {
             확인
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={handleHideToday}
+          className="mt-2 w-full text-center text-[11px] text-muted underline"
+        >
+          오늘 하루 보지 않기
+        </button>
       </div>
     </div>
   )

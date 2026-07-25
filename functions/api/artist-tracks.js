@@ -3,17 +3,35 @@ const SPOTIFY_API_BASE = 'https://api.spotify.com/v1'
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3'
 const RESULT_LIMIT = 5
 
+async function readUpstreamError(res) {
+  const text = await res.text().catch(() => '')
+  return `HTTP ${res.status}${text ? `: ${text}` : ''}`
+}
+
 async function getSpotifyToken(clientId, clientSecret) {
   const credentials = btoa(`${clientId}:${clientSecret}`)
-  const res = await fetch(SPOTIFY_TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  })
-  if (!res.ok) throw new Error('Spotify 인증에 실패했어요.')
+
+  let res
+  try {
+    res = await fetch(SPOTIFY_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+    })
+  } catch (networkError) {
+    console.error('[artist-tracks] Spotify token request threw:', networkError)
+    throw new Error(`Spotify 토큰 요청 실패: ${networkError.message}`)
+  }
+
+  if (!res.ok) {
+    const detail = await readUpstreamError(res)
+    console.error('[artist-tracks] Spotify token error:', detail)
+    throw new Error(`Spotify 인증 실패 (${detail})`)
+  }
+
   const data = await res.json()
   return data.access_token
 }
@@ -21,8 +39,21 @@ async function getSpotifyToken(clientId, clientSecret) {
 async function searchSpotifyTracks(token, artistName) {
   const query = encodeURIComponent(`artist:${artistName}`)
   const url = `${SPOTIFY_API_BASE}/search?q=${query}&type=track&limit=${RESULT_LIMIT}`
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-  if (!res.ok) throw new Error('Spotify 검색에 실패했어요.')
+
+  let res
+  try {
+    res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  } catch (networkError) {
+    console.error('[artist-tracks] Spotify search request threw:', networkError)
+    throw new Error(`Spotify 검색 요청 실패: ${networkError.message}`)
+  }
+
+  if (!res.ok) {
+    const detail = await readUpstreamError(res)
+    console.error('[artist-tracks] Spotify search error:', detail)
+    throw new Error(`Spotify 검색 실패 (${detail})`)
+  }
+
   const data = await res.json()
   return data.tracks?.items ?? []
 }
@@ -39,23 +70,91 @@ function pickBestVideo(items) {
   return items.find(isOfficialOrTopic) ?? items[0] ?? null
 }
 
-async function findYoutubeViewCount(apiKey, title, artist) {
-  const query = encodeURIComponent(`${artist} ${title} official audio`)
-  const searchUrl = `${YOUTUBE_API_BASE}/search?part=snippet&type=video&videoCategoryId=10&maxResults=5&q=${query}&key=${apiKey}`
-  const searchRes = await fetch(searchUrl)
-  if (!searchRes.ok) return 0
+async function searchYoutubeVideo(apiKey, query) {
+  const url = `${YOUTUBE_API_BASE}/search?part=snippet&type=video&videoCategoryId=10&maxResults=5&q=${encodeURIComponent(query)}&key=${apiKey}`
+  const res = await fetch(url)
+  if (!res.ok) {
+    console.error('[artist-tracks] YouTube search error:', await readUpstreamError(res))
+    return null
+  }
+  const data = await res.json()
+  return pickBestVideo(data.items ?? [])
+}
 
-  const searchData = await searchRes.json()
-  const best = pickBestVideo(searchData.items ?? [])
-  const videoId = best?.id?.videoId
-  if (!videoId) return 0
+async function fetchYoutubeViewCount(apiKey, videoId) {
+  const url = `${YOUTUBE_API_BASE}/videos?part=statistics&id=${videoId}&key=${apiKey}`
+  const res = await fetch(url)
+  if (!res.ok) {
+    console.error('[artist-tracks] YouTube video stats error:', await readUpstreamError(res))
+    return 0
+  }
+  const data = await res.json()
+  return Number(data.items?.[0]?.statistics?.viewCount ?? 0)
+}
 
-  const videoUrl = `${YOUTUBE_API_BASE}/videos?part=statistics&id=${videoId}&key=${apiKey}`
-  const videoRes = await fetch(videoUrl)
-  if (!videoRes.ok) return 0
+async function resolveViaSpotify(spotifyClientId, spotifyClientSecret, youtubeApiKey, artistName) {
+  const token = await getSpotifyToken(spotifyClientId, spotifyClientSecret)
+  const tracks = await searchSpotifyTracks(token, artistName)
 
-  const videoData = await videoRes.json()
-  return Number(videoData.items?.[0]?.statistics?.viewCount ?? 0)
+  return Promise.all(
+    tracks.map(async (track) => {
+      const artist = track.artists.map((a) => a.name).join(', ')
+      const video = await searchYoutubeVideo(
+        youtubeApiKey,
+        `${artist} ${track.name} official audio`
+      )
+      const viewCount = video?.id?.videoId
+        ? await fetchYoutubeViewCount(youtubeApiKey, video.id.videoId)
+        : 0
+
+      return {
+        song_id: `sp_${track.id}`,
+        title: track.name,
+        artist,
+        album_cover: track.album.images?.[0]?.url ?? null,
+        view_count: viewCount,
+      }
+    })
+  )
+}
+
+async function resolveViaYoutubeOnly(youtubeApiKey, artistName) {
+  const url = `${YOUTUBE_API_BASE}/search?part=snippet&type=video&maxResults=${RESULT_LIMIT}&q=${encodeURIComponent(`${artistName} Topic Audio`)}&key=${youtubeApiKey}`
+  const res = await fetch(url)
+  if (!res.ok) {
+    throw new Error(`YouTube 검색 실패 (${await readUpstreamError(res)})`)
+  }
+  const data = await res.json()
+  const videos = (data.items ?? []).filter((v) => v.id?.videoId)
+  if (videos.length === 0) return []
+
+  const videoIds = videos.map((v) => v.id.videoId)
+  const statsUrl = `${YOUTUBE_API_BASE}/videos?part=statistics&id=${videoIds.join(',')}&key=${youtubeApiKey}`
+  const statsRes = await fetch(statsUrl)
+  const viewCountById = new Map()
+  if (statsRes.ok) {
+    const statsData = await statsRes.json()
+    for (const item of statsData.items ?? []) {
+      viewCountById.set(item.id, Number(item.statistics?.viewCount ?? 0))
+    }
+  } else {
+    console.error(
+      '[artist-tracks] YouTube stats (fallback) error:',
+      await readUpstreamError(statsRes)
+    )
+  }
+
+  return videos.map((video) => ({
+    song_id: `yt_${video.id.videoId}`,
+    title: video.snippet.title,
+    artist: artistName,
+    album_cover:
+      video.snippet.thumbnails?.high?.url ??
+      video.snippet.thumbnails?.medium?.url ??
+      video.snippet.thumbnails?.default?.url ??
+      null,
+    view_count: viewCountById.get(video.id.videoId) ?? 0,
+  }))
 }
 
 export async function onRequestGet(context) {
@@ -68,48 +167,51 @@ export async function onRequestGet(context) {
     ?.trim()
 
   if (!artistName) {
-    return new Response(JSON.stringify({ error: 'artist 파라미터가 필요해요.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return new Response(
+      JSON.stringify({ error: 'artist 파라미터가 필요해요.', songs: [] }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    )
   }
 
-  if (!spotifyClientId || !spotifyClientSecret || !youtubeApiKey) {
+  if (!youtubeApiKey) {
     return new Response(
-      JSON.stringify({ error: 'Spotify/YouTube API 키가 설정되어 있지 않아요.' }),
+      JSON.stringify({ error: 'YouTube API 키가 설정되어 있지 않아요.', songs: [] }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 
-  try {
-    const token = await getSpotifyToken(spotifyClientId, spotifyClientSecret)
-    const tracks = await searchSpotifyTracks(token, artistName)
+  let songs = []
+  let warning = null
 
-    const songs = await Promise.all(
-      tracks.map(async (track) => {
-        const artist = track.artists.map((a) => a.name).join(', ')
-        const viewCount = await findYoutubeViewCount(
-          youtubeApiKey,
-          track.name,
-          artist
-        )
-        return {
-          song_id: `sp_${track.id}`,
-          title: track.name,
-          artist,
-          album_cover: track.album.images?.[0]?.url ?? null,
-          view_count: viewCount,
-        }
-      })
-    )
-
-    return new Response(JSON.stringify({ songs }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+  if (spotifyClientId && spotifyClientSecret) {
+    try {
+      songs = await resolveViaSpotify(
+        spotifyClientId,
+        spotifyClientSecret,
+        youtubeApiKey,
+        artistName
+      )
+    } catch (spotifyError) {
+      console.error('[artist-tracks] Spotify path failed, falling back to YouTube:', spotifyError)
+      warning = `Spotify 검색 실패로 YouTube 검색으로 대체했어요. (${spotifyError.message})`
+    }
+  } else {
+    warning = 'Spotify 키가 설정되어 있지 않아 YouTube 검색을 사용했어요.'
   }
+
+  if (songs.length === 0) {
+    try {
+      songs = await resolveViaYoutubeOnly(youtubeApiKey, artistName)
+    } catch (youtubeError) {
+      console.error('[artist-tracks] YouTube fallback also failed:', youtubeError)
+      return new Response(
+        JSON.stringify({ error: youtubeError.message, songs: [] }),
+        { status: 502, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+  }
+
+  return new Response(JSON.stringify({ songs, warning }), {
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
