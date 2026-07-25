@@ -287,6 +287,21 @@ export function AppProvider({ children }) {
     }
   }
 
+  // 잘못 매칭된/중복 등록된 곡을 마켓에서 완전히 제거한다. song_view_history는
+  // FK의 on delete cascade로 같이 정리된다.
+  const deleteSong = async (songId) => {
+    if (!isAdmin) return
+
+    dispatch({
+      type: 'MERGE_STATE',
+      payload: { songs: state.songs.filter((s) => s.song_id !== songId) },
+    })
+
+    if (isSupabaseEnabled) {
+      await supabase.from('songs').delete().eq('song_id', songId)
+    }
+  }
+
   // 오늘 날짜로 조회수 스냅샷 1건을 남긴다(같은 날 다시 부르면 upsert로 덮어씀).
   const recordViewSnapshot = async (songId, viewCount) => {
     if (!isAdmin || !isSupabaseEnabled) return
@@ -327,6 +342,7 @@ export function AppProvider({ children }) {
         settleDaily,
         registerSongs,
         updateSong,
+        deleteSong,
         recordViewSnapshot,
         fetchViewHistory,
         signUp,

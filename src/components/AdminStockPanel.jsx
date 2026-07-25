@@ -9,10 +9,17 @@ import { useApp } from '../context/AppContext'
 import { fetchCurrentViewCounts } from '../lib/songViews'
 
 export function AdminStockPanel() {
-  const { songs, isAdmin, updateSong, recordViewSnapshot, fetchViewHistory } =
-    useApp()
+  const {
+    songs,
+    isAdmin,
+    updateSong,
+    deleteSong,
+    recordViewSnapshot,
+    fetchViewHistory,
+  } = useApp()
   const [pending, setPending] = useState({})
   const [savingId, setSavingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
   const [currentViews, setCurrentViews] = useState({})
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [viewsError, setViewsError] = useState('')
@@ -74,6 +81,17 @@ export function AdminStockPanel() {
       delete next[songId]
       return next
     })
+  }
+
+  const handleDelete = async (song) => {
+    const ok = window.confirm(
+      `"${song.title}"을(를) 마켓에서 완전히 삭제할까요? 조회수 기록도 함께 지워집니다.`
+    )
+    if (!ok) return
+
+    setDeletingId(song.song_id)
+    await deleteSong(song.song_id)
+    setDeletingId(null)
   }
 
   const toggleHistory = async (songId) => {
@@ -163,6 +181,14 @@ export function AdminStockPanel() {
                 className="shrink-0 rounded-pill bg-rise px-3 py-1.5 text-xs font-semibold text-background disabled:opacity-40"
               >
                 {savingId === song.song_id ? '저장 중...' : '저장'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(song)}
+                disabled={deletingId === song.song_id}
+                className="shrink-0 rounded-pill bg-fall/10 px-3 py-1.5 text-xs font-semibold text-fall disabled:opacity-40"
+              >
+                {deletingId === song.song_id ? '삭제 중...' : '삭제'}
               </button>
             </div>
 

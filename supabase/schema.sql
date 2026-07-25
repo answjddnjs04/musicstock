@@ -105,6 +105,10 @@ create policy "Only the admin account can update songs"
   on public.songs for update
   using (auth.jwt() ->> 'email' = 'infinitefoever@naver.com');
 
+create policy "Only the admin account can delete songs"
+  on public.songs for delete
+  using (auth.jwt() ->> 'email' = 'infinitefoever@naver.com');
+
 -- Buying/selling goes through these instead of updating songs directly, so
 -- shares_sold can never exceed total_shares even under concurrent buyers.
 create or replace function public.buy_shares(p_song_id text, p_quantity integer)
