@@ -1,0 +1,16 @@
+name: Daily view count snapshot
+
+on:
+  schedule:
+    # 매일 01:00 UTC = 10:00 KST
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call snapshot-views endpoint
+        run: |
+          curl --fail-with-body -X POST "https://musicstock.pages.dev/api/snapshot-views" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
