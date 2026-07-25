@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
-import { HeroRankCard } from '../components/HeroRankCard'
-import { RankingTable } from '../components/RankingTable'
+import { RankColumn } from '../components/RankColumn'
 import { MusicCard } from '../components/MusicCard'
 import { FeeBadge } from '../components/FeeBadge'
 import {
@@ -117,47 +116,25 @@ export function HomeScreen({ onTrade }) {
           준비 중인 화면이에요.
         </div>
       ) : (
-        <div className="flex flex-col gap-3 px-4 pb-4">
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {topRising && (
-              <HeroRankCard
-                label="주가 급상승"
-                mainValue={`${topRising.current_price.toLocaleString()}콩`}
-                subValue={<ChangeText rate={topRising.price_change_rate} />}
-                song={topRising}
-                onSelect={handleSelect}
-              />
-            )}
-            {topDividend && (
-              <HeroRankCard
-                label="배당 수익률"
-                mainValue={`${topDividend.dividend_yield_ratio}%`}
-                subValue={<span className="text-rise">배당 수익률 1위</span>}
-                song={topDividend}
-                onSelect={handleSelect}
-              />
-            )}
-            {topCap && (
-              <HeroRankCard
-                label="시가총액 1위"
-                mainValue={`${calculateMarketCap(topCap).toLocaleString()}콩`}
-                subValue={<span className="text-muted">실시간 기준</span>}
-                song={topCap}
-                onSelect={handleSelect}
-              />
-            )}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <RankingTable
-              title="주가 급상승 TOP 8"
-              songs={getTopRising(songs, 8)}
+        <div className="flex gap-2 overflow-x-auto px-4 pb-4">
+          {topRising && (
+            <RankColumn
+              label="주가 급상승"
+              mainValue={`${topRising.current_price.toLocaleString()}콩`}
+              subValue={<ChangeText rate={topRising.price_change_rate} />}
+              topSong={topRising}
+              restSongs={getTopRising(songs, 8).slice(1)}
               renderStat={(song) => <ChangeText rate={song.price_change_rate} />}
               onSelect={handleSelect}
             />
-            <RankingTable
-              title="배당 수익률 TOP 8"
-              songs={getTopDividend(songs, 8)}
+          )}
+          {topDividend && (
+            <RankColumn
+              label="배당 수익률"
+              mainValue={`${topDividend.dividend_yield_ratio}%`}
+              subValue={<span className="text-rise">배당 수익률 1위</span>}
+              topSong={topDividend}
+              restSongs={getTopDividend(songs, 8).slice(1)}
               renderStat={(song) => (
                 <span className="text-[10px] font-semibold text-rise sm:text-xs">
                   {song.dividend_yield_ratio}%
@@ -165,9 +142,14 @@ export function HomeScreen({ onTrade }) {
               )}
               onSelect={handleSelect}
             />
-            <RankingTable
-              title="시가총액 TOP 8"
-              songs={getTopVolume(songs, 8)}
+          )}
+          {topCap && (
+            <RankColumn
+              label="시가총액 1위"
+              mainValue={`${calculateMarketCap(topCap).toLocaleString()}콩`}
+              subValue={<span className="text-muted">실시간 기준</span>}
+              topSong={topCap}
+              restSongs={getTopVolume(songs, 8).slice(1)}
               renderStat={(song) => (
                 <span className="text-[10px] font-semibold text-white sm:text-xs">
                   {calculateMarketCap(song).toLocaleString()}
@@ -175,7 +157,7 @@ export function HomeScreen({ onTrade }) {
               )}
               onSelect={handleSelect}
             />
-          </div>
+          )}
         </div>
       )}
     </div>
