@@ -11,14 +11,8 @@ import {
   getTopVolume,
 } from '../lib/rankings'
 
-const TOP_TABS = [
-  '인기 음악',
-  '보유 음악',
-  '관심 음악',
-  '거래 목록',
-  '검색 음악',
-  '아티스트 등록',
-]
+const BASE_TABS = ['인기 음악', '보유 음악', '관심 음악', '거래 목록', '검색 음악']
+const ADMIN_TABS = [...BASE_TABS, '아티스트 등록']
 
 function ChangeText({ rate }) {
   const isRise = rate >= 0
@@ -29,10 +23,10 @@ function ChangeText({ rate }) {
   )
 }
 
-function TopTabs({ activeTab, onChange }) {
+function TopTabs({ tabs, activeTab, onChange }) {
   return (
     <div className="flex flex-wrap gap-2">
-      {TOP_TABS.map((tab) => (
+      {tabs.map((tab) => (
         <button
           key={tab}
           type="button"
@@ -49,8 +43,9 @@ function TopTabs({ activeTab, onChange }) {
 }
 
 export function HomeScreen({ onTrade }) {
-  const { songs, balance } = useApp()
-  const [activeTab, setActiveTab] = useState(TOP_TABS[0])
+  const { songs, balance, isAdmin } = useApp()
+  const tabs = isAdmin ? ADMIN_TABS : BASE_TABS
+  const [activeTab, setActiveTab] = useState(BASE_TABS[0])
   const [query, setQuery] = useState('')
 
   const filteredSongs = useMemo(() => {
@@ -94,7 +89,7 @@ export function HomeScreen({ onTrade }) {
           className="w-full rounded-pill bg-surface px-4 py-2 text-sm text-white placeholder:text-muted focus:outline-none"
         />
 
-        <TopTabs activeTab={activeTab} onChange={setActiveTab} />
+        <TopTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
       </div>
 
       {activeTab === '검색 음악' ? (
@@ -121,7 +116,7 @@ export function HomeScreen({ onTrade }) {
         </div>
       ) : activeTab === '아티스트 등록' ? (
         <div className="px-4 pb-4">
-          <ArtistRegisterPanel onTrade={onTrade} />
+          <ArtistRegisterPanel />
         </div>
       ) : activeTab !== '인기 음악' ? (
         <div className="mx-4 flex h-40 items-center justify-center rounded-card bg-surface text-sm text-muted">

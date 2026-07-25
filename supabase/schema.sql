@@ -74,3 +74,31 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- Admin-registered songs (persists across refreshes, visible to everyone).
+create table public.songs (
+  song_id text primary key,
+  title text not null,
+  artist text not null,
+  album_cover text,
+  current_price bigint not null default 1000,
+  daily_views_growth bigint not null default 0,
+  price_change_rate numeric not null default 0,
+  trading_volume bigint not null default 0,
+  dividend_yield_ratio numeric not null default 0,
+  created_at timestamptz not null default now()
+);
+
+alter table public.songs enable row level security;
+
+create policy "Anyone can view songs"
+  on public.songs for select
+  using (true);
+
+create policy "Only the admin account can add songs"
+  on public.songs for insert
+  with check (auth.jwt() ->> 'email' = 'infinitefoever@naver.com');
+
+create policy "Only the admin account can update songs"
+  on public.songs for update
+  using (auth.jwt() ->> 'email' = 'infinitefoever@naver.com');

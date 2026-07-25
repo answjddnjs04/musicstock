@@ -6,6 +6,35 @@ import { supabase } from '../lib/supabaseClient'
 import { fetchYoutubeSongs } from '../lib/youtube'
 
 const isSupabaseEnabled = !!supabase
+const ADMIN_EMAIL = 'infinitefoever@naver.com'
+
+function songToRow(song) {
+  return {
+    song_id: song.song_id,
+    title: song.title,
+    artist: song.artist,
+    album_cover: song.album_cover,
+    current_price: song.current_price,
+    daily_views_growth: song.daily_views_growth,
+    price_change_rate: song.price_change_rate,
+    trading_volume: song.trading_volume,
+    dividend_yield_ratio: song.dividend_yield_ratio,
+  }
+}
+
+function rowToSong(row) {
+  return {
+    song_id: row.song_id,
+    title: row.title,
+    artist: row.artist,
+    album_cover: row.album_cover,
+    current_price: row.current_price,
+    daily_views_growth: row.daily_views_growth,
+    price_change_rate: row.price_change_rate,
+    trading_volume: row.trading_volume,
+    dividend_yield_ratio: row.dividend_yield_ratio,
+  }
+}
 
 const initialState = {
   songs: mockSongs,
@@ -107,6 +136,28 @@ export function AppProvider({ children }) {
   }, [])
 
   useEffect(() => {
+    if (!isSupabaseEnabled) return
+
+    supabase
+      .from('songs')
+      .select('*')
+      .then(({ data }) => {
+        if (!data || data.length === 0) return
+        dispatch({
+          type: 'MERGE_STATE',
+          payload: {
+            songs: [
+              ...state.songs,
+              ...data
+                .filter((row) => !state.songs.some((s) => s.song_id === row.song_id))
+                .map(rowToSong),
+            ],
+          },
+        })
+      })
+  }, [])
+
+  useEffect(() => {
     if (!isSupabaseEnabled || !state.session) return
 
     const userId = state.session.user.id
@@ -176,12 +227,21 @@ export function AppProvider({ children }) {
     }
   }
 
-  const registerSongs = (newSongs) => {
+  const isAdmin = state.session?.user?.email === ADMIN_EMAIL
+
+  const registerSongs = async (newSongs) => {
+    if (!isAdmin) return
+
     const unseen = newSongs.filter(
       (ns) => !state.songs.some((s) => s.song_id === ns.song_id)
     )
     if (unseen.length === 0) return
+
     dispatch({ type: 'MERGE_STATE', payload: { songs: [...state.songs, ...unseen] } })
+
+    if (isSupabaseEnabled) {
+      await supabase.from('songs').upsert(unseen.map(songToRow))
+    }
   }
 
   const signUp = (email, password) => supabase.auth.signUp({ email, password })
@@ -194,6 +254,7 @@ export function AppProvider({ children }) {
       value={{
         ...state,
         isSupabaseEnabled,
+        isAdmin,
         buySong,
         sellSong,
         settleDaily,
