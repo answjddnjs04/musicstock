@@ -176,6 +176,14 @@ export function AppProvider({ children }) {
     }
   }
 
+  const registerSongs = (newSongs) => {
+    const unseen = newSongs.filter(
+      (ns) => !state.songs.some((s) => s.song_id === ns.song_id)
+    )
+    if (unseen.length === 0) return
+    dispatch({ type: 'MERGE_STATE', payload: { songs: [...state.songs, ...unseen] } })
+  }
+
   const signUp = (email, password) => supabase.auth.signUp({ email, password })
   const signIn = (email, password) =>
     supabase.auth.signInWithPassword({ email, password })
@@ -189,6 +197,7 @@ export function AppProvider({ children }) {
         buySong,
         sellSong,
         settleDaily,
+        registerSongs,
         signUp,
         signIn,
         signOut,

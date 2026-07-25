@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext'
 import { RankColumn } from '../components/RankColumn'
 import { MusicCard } from '../components/MusicCard'
 import { FeeBadge } from '../components/FeeBadge'
+import { ArtistRegisterPanel } from '../components/ArtistRegisterPanel'
 import {
   calculateMarketCap,
   getTopDividend,
@@ -10,7 +11,14 @@ import {
   getTopVolume,
 } from '../lib/rankings'
 
-const TOP_TABS = ['인기 음악', '보유 음악', '관심 음악', '거래 목록', '검색 음악']
+const TOP_TABS = [
+  '인기 음악',
+  '보유 음악',
+  '관심 음악',
+  '거래 목록',
+  '검색 음악',
+  '아티스트 등록',
+]
 
 function ChangeText({ rate }) {
   const isRise = rate >= 0
@@ -110,6 +118,10 @@ export function HomeScreen({ onTrade }) {
               />
             ))
           )}
+        </div>
+      ) : activeTab === '아티스트 등록' ? (
+        <div className="px-4 pb-4">
+          <ArtistRegisterPanel onTrade={onTrade} />
         </div>
       ) : activeTab !== '인기 음악' ? (
         <div className="mx-4 flex h-40 items-center justify-center rounded-card bg-surface text-sm text-muted">
